@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: stats-service
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app: stats-service
+template:
+    metadata:
+        labels:
+            app: stats-service
+    spec:
+    containers:
+        - name: stats-service
+          image: my-registry/stats-service:latest
+          envFrom:
+            -configMapRef:
+                name: db-config
+            -secretRef:
+                name: db-creds
+          resources:
+            limits:
+                memory: 1Gi
+                cpu: 1 
+            requests:
+                memory: 800Mi
+                cpu: 500m
+          ports:
+          - containerPort: 8080
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+    name: stats-service
+spec:
+    selector:
+        app: stats-service
+    ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 8080
+           
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+    name: stats-service
+spec:
+    rules:
+    - http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+                name: stats-service
+                port:
+                    number: 80
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: stats-service
+spec:
+  podSelector:
+    matchLabels:
+      app: stats-service
+  policyTypes:  
+    Ingress
+  ingress:
+    - from:
+        - podSelector:
+            -matchLabels:
+                app: 
+                - team-service
+                  rating-service
+      ports:
+        - protocol: TCP
+          port: 8080                 
+
+
+
+
+
